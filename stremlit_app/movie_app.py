@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
-from inference import get_similar_movies
+import requests
+
+DATABRICKS_URL = st.secrets["DATABRICKS_URL"]
+TOKEN = st.secrets["TOKEN"]
 
 @st.cache_data
 def load_data():
@@ -38,16 +41,19 @@ if mode=="By Movie Title":
     movie_input = st.text_input("Enter Movie Title")
 
     if st.button("Find Similar Movies"):
-        sim_movies = get_similar_movies(movie_input)
+        response = requests.post(
+        DATABRICKS_URL,
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "movie_title": movie_input,
+            "top_n": 10
+        }
+    )
 
-        if sim_movies is None:
-            st.warning("No similar movies found.")
-        else:
-            sim_movies_pd = sim_movies.toPandas()
-            
-            if sim_movies_pd.empty:
-                st.warning("No similar movies found.")
-            else:
-                st.subheader("Similar movies:")
-                for _, row in sim_movies_pd.iterrows():
-                    st.write(f"**{row['title']}**")
+    results = response.json()
+
+    for movie in results:
+        st.write(f"🎬 {movie['title']}  |  Similarity: {movie['similarity']}")
