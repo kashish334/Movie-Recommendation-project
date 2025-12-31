@@ -1,6 +1,7 @@
 import streamlit as st
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
+from inference import get_similar_movies
 
 @st.cache_resource
 def get_spark():
@@ -47,15 +48,12 @@ if mode=="By Movie Title":
 
     st.subheader("Search similar movies")
     movie_input = st.text_input("Enter Movie Title")
-
+    results = get_similar_movies(movie_input)
     if st.button("Find Similar Movies"):
-        # Note: For true "Similarity", you usually need a pre-trained ALS model 
-        # or a Cosine Similarity matrix. 
-        # For now, this searches for the movie in your Spark DataFrame:
-        similar_movies = recs_df.filter(col("title").contains(movie_input)).limit(10).collect()
-        
-        if not similar_movies:
-            st.error("Movie not found in dataset.")
+        if results == "Movie Not Found":
+            st.error("Could not find that movie. Try a different name!")
+        elif results == "Empty Input":
+            st.warning("Please enter a movie title.")
         else:
-            for movie in similar_movies:
-                st.write(f"🎬 {movie['title']} | Rating: {movie['rating']}")
+            for movie in results:
+                st.write(f"🎬 {movie['title']} | Similarity: {movie['similarity']}")
