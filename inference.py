@@ -70,6 +70,3 @@ def get_similar_movies(movie_title, top_n=10):
         .to_dict(orient="records")
         )
     return result
-
-print(get_similar_movies("toy story"))
-print("🎉")
