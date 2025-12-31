@@ -36,11 +36,11 @@ if mode == "By User ID":
     if st.button("Get Recommendations"):
         users_recs = recs_df.filter(col("userId") == user_id).collect()
 
-        if users_recs.empty:
+        if not users_recs:
             st.warning("No recommendations for this user.")
         else:
             st.subheader("Recommended movies:")
-            for _, row in users_recs.iterrows():
+            for row in users_recs:
                 st.write(f"**{row['title']}**  |  Predicted rating: {row['rating']:.2f}")
 
 if mode=="By Movie Title":
