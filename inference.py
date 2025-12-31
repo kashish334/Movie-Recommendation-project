@@ -7,10 +7,7 @@ from pyspark.sql.functions import explode, split, udf
 
 @staticmethod
 def get_spark():
-    return SparkSession.builder \
-        .appName("movie_app") \
-        .master("local[*]") \
-        .getOrCreate()
+    return SparkSession.builder.appName("movie_app").getOrCreate()
 
 # Function to find similar movies using cosine similarity
 def get_similar_movies(movie_title, top_n=10):
@@ -46,7 +43,7 @@ def get_similar_movies(movie_title, top_n=10):
     df_norm = normalizer.transform(df_fixed)
 
     # Find the movie entered by user
-    matched_movie = df_norm.filter(F.col("title").ilike(f"%{movie_title}%")).select("movieId").collect()
+    matched_movie = df_norm.filter(F.col("title").ilike(f"%{movie_title}%")).select("movieId").limit(1).collect()
     if not matched_movie:
         return "Movie Not Found"
 
@@ -67,4 +64,9 @@ def get_similar_movies(movie_title, top_n=10):
         .limit(top_n + 1)
         .select("movieId", "title", F.round(F.col("similarity"), 3).alias("similarity")))
     
-    return recommendations
+    result = (
+        recommendations
+        .toPandas()
+        .to_dict(orient="records")
+        )
+    return result
