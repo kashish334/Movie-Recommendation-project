@@ -1,8 +1,6 @@
 import streamlit as st
-import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
-import requests
 
 @st.cache_resource
 def get_spark():
@@ -17,7 +15,7 @@ def get_spark():
 def load_data():
     spark = get_spark()
     recs = spark.read.csv('artifacts/movies_rec_user.csv',header=True, inferSchema=True)
-    return recs
+    return recs.toPandas()
 
 spark = get_spark()
 recs_df = load_data()
