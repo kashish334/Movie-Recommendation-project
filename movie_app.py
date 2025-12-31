@@ -11,11 +11,11 @@ def get_spark():
         .getOrCreate()
     return spark
 
-@st.cache_data
+@st.cache_resource
 def load_data():
     spark = get_spark()
     recs = spark.read.csv('artifacts/movies_rec_user.csv',header=True, inferSchema=True)
-    return recs.toPandas()
+    return recs
 
 spark = get_spark()
 recs_df = load_data()
