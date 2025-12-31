@@ -1,10 +1,10 @@
 # 1. Start with a Python base image
-FROM python:3.9-slim
+FROM python:3.9-slim-bullseye
 
 # 2. Install OpenJDK (Java) and other system dependencies
 # PySpark needs Java to run.
-RUN apt-get update && apt-get install -y \
-    openjdk-17-jre-headless \
+RUN apt-get update --fix-missing && apt-get install -y \
+    openjdk-11-jre-headless \
     build-essential \
     curl \
     && apt-get clean \
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # 3. Set Environment Variables
 # This is the Docker equivalent of your manual 'Path' settings
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # 4. Set the working directory inside the container
