@@ -10,7 +10,6 @@ def get_spark():
     spark = SparkSession.builder \
         .appName("MovieRec") \
         .config("spark.driver.memory", "2g") \
-        .get_all_configs() \
         .getOrCreate()
     return spark
 
@@ -37,7 +36,7 @@ if mode == "By User ID":
     user_id = st.number_input("Enter user ID", min_value=1, step=1)
 
     if st.button("Get Recommendations"):
-        users_recs = recs_df[recs_df["userId"] == user_id] 
+        users_recs = recs_df.filter(col("userId") == user_id).collect()
 
         if users_recs.empty:
             st.warning("No recommendations for this user.")
