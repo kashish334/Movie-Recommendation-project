@@ -1,15 +1,26 @@
 import streamlit as st
 import pandas as pd
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 import requests
 
-DATABRICKS_URL = st.secrets["DATABRICKS_URL"]
-TOKEN = st.secrets["TOKEN"]
+@st.cache_resource
+def get_spark():
+    # We use 'local[*]' to use all available CPU cores in the container
+    spark = SparkSession.builder \
+        .appName("MovieRec") \
+        .config("spark.driver.memory", "2g") \
+        .get_all_configs() \
+        .getOrCreate()
+    return spark
 
 @st.cache_data
 def load_data():
-    recs = pd.read_csv('artifacts/movies_rec_user.csv')
+    spark = get_spark()
+    recs = spark.read.csv('artifacts/movies_rec_user.csv',header=True, inferSchema=True)
     return recs
 
+spark = get_spark()
 recs_df = load_data()
 
 st.set_page_config("Movie Recommender", page_icon="")
@@ -37,23 +48,17 @@ if mode == "By User ID":
 
 if mode=="By Movie Title":
 
-    st.subheader("Movies similar to a given title")
+    st.subheader("Search similar movies")
     movie_input = st.text_input("Enter Movie Title")
 
     if st.button("Find Similar Movies"):
-        response = requests.post(
-        DATABRICKS_URL,
-        headers={
-            "Authorization": f"Bearer {TOKEN}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "movie_title": movie_input,
-            "top_n": 10
-        }
-    )
-
-    results = response.json()
-
-    for movie in results:
-        st.write(f"🎬 {movie['title']}  |  Similarity: {movie['similarity']}")
+        # Note: For true "Similarity", you usually need a pre-trained ALS model 
+        # or a Cosine Similarity matrix. 
+        # For now, this searches for the movie in your Spark DataFrame:
+        similar_movies = recs_df.filter(col("title").contains(movie_input)).limit(10).collect()
+        
+        if not similar_movies:
+            st.error("Movie not found in dataset.")
+        else:
+            for movie in similar_movies:
+                st.write(f"🎬 {movie['title']} | Rating: {movie['rating']}")
