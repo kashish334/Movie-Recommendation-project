@@ -5,7 +5,6 @@ from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.types import DoubleType, ArrayType
 from pyspark.sql.functions import explode, split, udf
 
-@staticmethod
 def get_spark():
     return SparkSession.builder.appName("movie_app").getOrCreate()
 
