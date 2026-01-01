@@ -4,9 +4,7 @@ from pyspark.ml.feature import Normalizer
 from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.types import DoubleType, ArrayType
 from pyspark.sql.functions import explode, split, udf
-
-def get_spark():
-    return SparkSession.builder.appName("movie_app").getOrCreate()
+from spark import get_spark
 
 # Function to find similar movies using cosine similarity
 def get_similar_movies(movie_title, top_n=10):

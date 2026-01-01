@@ -1,16 +1,7 @@
 import streamlit as st
-from pyspark.sql import SparkSession
+from spark import get_spark
 from pyspark.sql.functions import col
 from inference import get_similar_movies
-
-@st.cache_resource
-def get_spark():
-    # We use 'local[*]' to use all available CPU cores in the container
-    spark = SparkSession.builder \
-        .appName("MovieRec") \
-        .config("spark.driver.memory", "2g") \
-        .getOrCreate()
-    return spark
 
 @st.cache_resource
 def load_data():
