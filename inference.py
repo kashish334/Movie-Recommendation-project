@@ -1,4 +1,3 @@
-from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.ml.feature import Normalizer
 from pyspark.ml.linalg import Vectors, VectorUDT
