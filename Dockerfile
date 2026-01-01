@@ -10,14 +10,13 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 2. Copy all files (at this point, LFS files are just tiny text pointers)
-COPY . /app
+# Clone repo with LFS skip (respects GIT_LFS_SKIP_SMUDGE=1 env var)
+ARG REPO_URL=https://github.com/kashish334/Movie-Recommendation-project.git
+ARG REPO_BRANCH=main  # or your branch
+RUN git clone --depth 1 --branch ${REPO_BRANCH} --single-branch ${REPO_URL} . \
+    && git lfs pull  # Downloads real LFS files here
 
-# 3. FORCE the download of the real 100MB+ files
-# Note: This requires the repo to be a valid git repo or handled via smudge
-# If this fails, we use the 'Skip Smudge' env var approach below.
-RUN git lfs pull
-
+# Install Python deps
 RUN pip install --no-cache-dir -r requirements.txt
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
