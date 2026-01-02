@@ -1,16 +1,12 @@
 import streamlit as st
-from spark import get_spark
-from pyspark.sql.functions import col
 from inference import search_similar
+import pandas as pd
 
-@st.cache_resource
-def load_data():
-    spark = get_spark()
-    recs = spark.read.csv('artifacts/movies_rec_user.csv',header=True, inferSchema=True)
-    return recs
+@st.cache_data
+def load_user_recs():
+    return pd.read_csv('artifacts/movies_rec_user.csv')
 
-spark = get_spark()
-recs_df = load_data()
+recs_df = load_user_recs()  # ~10MB, fine
 
 st.set_page_config("Movie Recommender", page_icon="")
 
@@ -26,20 +22,19 @@ if mode == "By User ID":
     user_id = st.number_input("Enter user ID", min_value=1, step=1)
 
     if st.button("Get Recommendations"):
-        users_recs = recs_df.filter(col("userId") == user_id).collect()
-
-        if not users_recs:
+        user_recs = recs_df[recs_df["userId"] == user_id]
+        if not user_recs:
             st.warning("No recommendations for this user.")
         else:
             st.subheader("Recommended movies:")
-            for row in users_recs:
-                st.write(f"**{row['title']}**  |  Predicted rating: {row['rating']:.2f}")
+            for _, row in user_recs.iterrows():
+                st.write(f"**{row['title']}** | Predicted rating: {row['rating']:.2f}")
 
 if mode=="By Movie Title":
 
     st.subheader("Search similar movies")
     movie_input = st.text_input("Enter Movie Title")
-    
+
     if st.button("Find similar movies") and movie_input:
         res = search_similar(movie_input, k=10)
         if res == "Movie Not Found" or res == "Movie Not Found in index":

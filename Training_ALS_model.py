@@ -89,6 +89,8 @@ def train_ALS():
     # Join with movie titles
     df_titles = df_split.join(movies.select("movieId", "title"), on="movieId", how="left")
     df_titles_pd = df_titles.toPandas()
+    df_titles_pd = df_titles_pd.head(10000)  # Top 10k recs only
+    df_titles_pd.to_csv("artifacts/movies_rec_user.csv", index=False)
     os.makedirs("artifacts", exist_ok=True)
 
     df_titles_pd.to_csv(
