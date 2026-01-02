@@ -1,7 +1,7 @@
 import streamlit as st
 from spark import get_spark
 from pyspark.sql.functions import col
-from inference import get_similar_movies
+from inference import search_similar
 
 @st.cache_resource
 def load_data():
@@ -39,12 +39,12 @@ if mode=="By Movie Title":
 
     st.subheader("Search similar movies")
     movie_input = st.text_input("Enter Movie Title")
-    results = get_similar_movies(movie_input)
-    if st.button("Find Similar Movies"):
-        if results == "Movie Not Found":
-            st.error("Could not find that movie. Try a different name!")
-        elif results == "Empty Input":
-            st.warning("Please enter a movie title.")
+    
+    if st.button("Find similar movies") and movie_input:
+        res = search_similar(movie_input, k=10)
+        if res == "Movie Not Found" or res == "Movie Not Found in index":
+            st.error(res)
         else:
-            for movie in results:
-                st.write(f"🎬 {movie['title']} | Similarity: {movie['similarity']}")
+            st.write(f"Similar to: **{res['query_title']}**")
+            for r in res["results"]:
+                st.write(f"- {r['title']} (score: {r['score']:.3f})")

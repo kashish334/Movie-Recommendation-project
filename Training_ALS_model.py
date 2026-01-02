@@ -13,6 +13,8 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.sql.functions import explode, col
 from pyspark.sql import SparkSession
 import os
+import pickle
+import numpy as np
 
 # Create Spark session (Driver only)
 def create_spark():
@@ -57,6 +59,13 @@ def train_ALS():
     )
     model = als.fit(train)
 
+    item_factors = model.itemFactors.toPandas()
+    item_ids = item_factors['id'].values
+    item_factors = np.array(item_factors['features'].to_list(), dtype=float)
+    item_factors_dict = dict(zip(item_ids, item_factors))
+    with open('item_factors.pkl', 'wb') as f:
+        pickle.dump(item_factors_dict, f)
+
     predictions = model.transform(test)
 
     evaluator = RegressionEvaluator(
@@ -86,7 +95,7 @@ def train_ALS():
         "artifacts/movies_rec_user.csv",
         index=False,
         encoding="utf-8"
-        )    
+        )  
     
 if __name__ == "__main__":
     train_ALS()

@@ -1,68 +1,54 @@
-from pyspark.sql import functions as F
-from pyspark.ml.feature import Normalizer
-from pyspark.ml.linalg import Vectors, VectorUDT
-from pyspark.sql.types import DoubleType, ArrayType
-from pyspark.sql.functions import explode, split, udf
-from spark import get_spark
+import faiss
+import pickle
+import numpy as np
+import pandas as pd
 
-# Function to find similar movies using cosine similarity
-def get_similar_movies(movie_title, top_n=10):
-    spark = get_spark()
-    movies = spark.read.csv("data/movies.csv", header=True, inferSchema=True)
+movies_df = pd.read_csv("data/movies.csv")  # columns: movieId, title, genres
+id_to_title = dict(zip(movies_df["movieId"], movies_df["title"]))
 
-    # Extract all unique genres from movies
-    all_genres = movies.select(explode(split("genres", "\\|")).alias("genre")).distinct()
-    genres_list = [row.genre for row in all_genres.collect()]  # Pure Python list
-    
-    genres_broadcast = spark.sparkContext.broadcast(genres_list)
+movies_df["title_lower"] = movies_df["title"].str.lower()
 
-    # Convert genre string to binary vector (UDF)
-    def genre_to_vector(genres_str):
-        if genres_str is None:
-            return [0.0] * len(genres_broadcast.value)
-        genres = set(genres_str.split("|"))
-        return [1.0 if g in genres else 0.0 for g in genres_broadcast.value]
+def find_movie_id_by_name(name: str):
+    name = name.strip().lower()
+    # Simple contains match; you can switch to exact match if you want
+    matches = movies_df[movies_df["title_lower"].str.contains(name)]
+    if matches.empty:
+        return None
+    # Take the first match
+    row = matches.iloc[0]
+    return int(row["movieId"]), row["title"]
 
-    vector_udf = udf(genre_to_vector, ArrayType(DoubleType()))
+# Load index ONCE at startup
+index = faiss.read_index("item_factors.faiss")
 
-    # apply genre vector udf
-    movies_with_vectors = movies.withColumn("genre_vector", vector_udf("genres"))
+def get_vector_for_movie(movie_id: int):
+    # reconstruct returns float32 vector of dimension d
+    return index.reconstruct(int(movie_id)).reshape(1, -1)
 
-    # Convert to proper Vector type (simplified - use ML VectorAssembler for production)
-    movies_genre_vec = movies_with_vectors
-
-    as_vector_udf = F.udf(lambda l: Vectors.dense(l), VectorUDT())
-
-    # Normalize vectors (required for cosine similarity)
-    df_fixed = movies_genre_vec.withColumn("genre_vector", as_vector_udf(F.col("genre_vector")))
-    normalizer = Normalizer(inputCol="genre_vector", outputCol="norm_vectors", p=2.0)
-    df_norm = normalizer.transform(df_fixed)
-
-    # Find the movie entered by user
-    matched_movie = df_norm.filter(F.col("title").ilike(f"%{movie_title}%")).select("movieId").limit(1).collect()
-    if not matched_movie:
+def search_similar(movie_title, k=10):
+    res = find_movie_id_by_name(movie_title)
+    if res is None:
         return "Movie Not Found"
+    movie_id, canonical_title = res
 
-    movie_id = matched_movie[0]["movieId"]
-    movie_row = df_norm.filter(F.col("movieId") == movie_id).select("norm_vectors").collect()
-    movie_vector = movie_row[0]["norm_vectors"]
+    try:
+        q_vec = get_vector_for_movie(movie_id)  # shape (1, d)
+    except RuntimeError:
+        # ID not in index
+        return "Movie Not Found in index"
 
-    # Cosine similarity = dot product of normalized vectors
-    def cosine_similarity(v):
-        return float(movie_vector.dot(v))
-    
-    dot_udf = F.udf(cosine_similarity, DoubleType())
+    # 3) search in FAISS
+    D, I = index.search(q_vec, k + 1)  # include self
+    ids = I[0].tolist()
+    scores = D[0].tolist()
 
-    # Compute similarity with all movies
-    recommendations = (df_norm
-        .withColumn("similarity", dot_udf(F.col("norm_vectors")))
-        .orderBy(F.col("similarity").desc())
-        .limit(top_n + 1)
-        .select("movieId", "title", F.round(F.col("similarity"), 3).alias("similarity")))
-    
-    result = (
-        recommendations
-        .toPandas()
-        .to_dict(orient="records")
-        )
-    return result
+    results = []
+    for mid, score in zip(ids, scores):
+        if mid == movie_id:
+            continue  # skip the query movie itself
+        title = id_to_title.get(mid, f"Movie {mid}")
+        results.append({"movieId": int(mid), "title": title, "score": float(score)})
+        if len(results) >= k:
+            break
+
+    return {"query_title": canonical_title, "results": results}
