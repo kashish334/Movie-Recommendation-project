@@ -2,13 +2,13 @@ import streamlit as st
 from inference import search_similar
 import pandas as pd
 
+st.set_page_config("Movie Recommender", page_icon="🎬", layout="wide")
+
 @st.cache_data
 def load_user_recs():
     return pd.read_csv('artifacts/movies_rec_user.csv')
 
 recs_df = load_user_recs()  # ~10MB, fine
-
-st.set_page_config("Movie Recommender", page_icon="")
 
 st.title("🎬 Movie Recommender")
 
