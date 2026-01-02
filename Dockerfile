@@ -11,10 +11,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt faiss-cpu pandas==2.0.3 numpy streamlit
 
-# Copy code + precomputed files
-COPY movie_app.py inference.py ./
-COPY data/movies.csv ./data/  # ~10MB, fine
-COPY item_factors.pkl item_factors.faiss artifacts/movies_rec_user.csv ./
+COPY . . 
 
 # Preload data/metadata (faster startup)
 RUN python -c "
