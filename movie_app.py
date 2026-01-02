@@ -23,7 +23,7 @@ if mode == "By User ID":
 
     if st.button("Get Recommendations"):
         user_recs = recs_df[recs_df["userId"] == user_id]
-        if not user_recs:
+        if user_recs.empty:
             st.warning("No recommendations for this user.")
         else:
             st.subheader("Recommended movies:")
