@@ -14,11 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt faiss-cpu pandas==2.0.3 numpy
 COPY . . 
 
 # Preload data/metadata (faster startup)
-RUN python -c "
-import pandas as pd
-df = pd.read_csv('data/movies.csv')
-print(f'Loaded {len(df)} movies')
-"
+RUN python -c "import pandas as pd; df=pd.read_csv('data/movies.csv'); print(f'✅ Loaded {len(df)} movies')"
 
 EXPOSE 8501
 
